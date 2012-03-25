@@ -27,7 +27,7 @@
 
 """Updates tests to fix data mismatches."""
 
-import sys, time, gzip, json, urllib, io
+import sys, time, gzip, json, urllib, io, collections
 
 TEST_URL = "http://zotero-translator-tests.s3-website-us-east-1.amazonaws.com/"
 
@@ -38,8 +38,9 @@ def fetch_json(path, gzipped=False):
 	if response != 200:
 		raise Exception('Server returned an error: '+str(response));
 	if gzipped:
-		data = json.load(gzip.GzipFile(fileobj=io.BytesIO(fp.read())))
+		data = json.load(gzip.GzipFile(fileobj=io.BytesIO(fp.read())),
+			object_pairs_hook=collections.OrderedDict)
 	else:
-		data = json.load(fp)
+		data = json.load(fp, object_pairs_hook=collections.OrderedDict)
 	fp.close()
 	return data

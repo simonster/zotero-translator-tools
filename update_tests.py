@@ -28,7 +28,7 @@
 """Sets compatibility on Zotero translators by fetching the latest test results. Currently only
 adds compatibility."""
 
-import os, re, time, argparse
+import os, re, time, argparse, collections
 from common import *
 
 TRANSLATORS_DIRECTORY = "/Users/simon/Desktop/Development/FS/zotero/translators"
@@ -36,21 +36,10 @@ UPDATE_LASTUPDATED = False
 
 parser = argparse.ArgumentParser(description='Updates items to correspond with the most recent '
 	+'test run')
-parser.add_argument('translator', help='path to translator to update')
+parser.add_argument('translator', nargs='+', help='path to translator to update')
 parser.add_argument('-d', '--date', help='use test runs from DATE')
 args = parser.parse_args()
 date = args.date or time.strftime("%Y-%m-%d", time.gmtime())
-
-# Load translator file
-fp = open(args.translator, 'r+')
-translator = fp.read()
-# Read info
-m = re.match(r'^\s*{[\S\s]*?}\s*?[\r\n]', translator)
-info = json.loads(m.group(0))
-# Read tests
-m = re.search(r'(/\*\* BEGIN TEST CASES \*\*/\s*var testCases =\s*)([\s\S]*?)(\s*/\*\* END TEST CASES \*\*/)',
-	translator)
-tests = json.loads(m.group(2))
 
 # Load index
 index = fetch_json(date+"/index.json")
@@ -61,28 +50,41 @@ if not gecko_testResults:
 	raise Exception('No test results for '+date+' available')
 gecko_testResults = fetch_json(date+"/"+gecko_testResults[0], True)
 
-# Find translator
-translator_results = [translator_results for translator_results in gecko_testResults['results']
-	if translator_results['translatorID'] == info['translatorID']];
-if not gecko_testResults:
-	raise Exception('Translator '+info['translatorID']+' not found in test results')
-translator_results = translator_results[0]
-
-# Update unknown tests
-if not translator_results['unknown']:
-	raise Exception('Translator has no data mismatches to update')
-for testResult in translator_results['unknown']:
-	for test in tests:
-		if test['url'] == testResult['url']:
-			test['items'] = testResult['itemsReturned']
-
-# Save
-newTranslator = translator.replace(m.group(0),
-	m.group(1)+json.dumps(tests, indent=64).replace(' ' * 64, '\t')+m.group(3))
-if newTranslator == translator:
-	raise Exception('Could not update tests')
-
-# Write out translator
-fp.seek(0)
-fp.truncate(0)
-fp.write(newTranslator)
+for translator in args.translator:
+	# Load translator files
+	fp = open(translator, 'r+')
+	translator = fp.read()
+	# Read info
+	m = re.match(r'^\s*{[\S\s]*?}\s*?[\r\n]', translator)
+	info = json.loads(m.group(0), object_pairs_hook=collections.OrderedDict)
+	# Read tests
+	m = re.search(r'(/\*\* BEGIN TEST CASES \*\*/\s*var testCases =\s*)([\s\S]*?)(\s*/\*\* END TEST CASES \*\*/)',
+		translator)
+	tests = json.loads(m.group(2), object_pairs_hook=collections.OrderedDict)
+	
+	# Find translator
+	translator_results = [translator_results for translator_results in gecko_testResults['results']
+		if translator_results['translatorID'] == info['translatorID']];
+	if not gecko_testResults:
+		raise Exception('Translator '+info['translatorID']+' not found in test results')
+	translator_results = translator_results[0]
+	
+	# Update unknown tests
+	if not translator_results['unknown']:
+		raise Exception('Translator has no data mismatches to update')
+	for testResult in translator_results['unknown']:
+		for test in tests:
+			if test['url'] == testResult['url']:
+				test['items'] = testResult['itemsReturned']
+	
+	# Save
+	newTranslator = translator.replace(m.group(0),
+		m.group(1)+json.dumps(tests, indent=64).replace(' ' * 64, '\t')+m.group(3))
+	if newTranslator == translator:
+		raise Exception('Could not update tests')
+	
+	# Write out translator
+	fp.seek(0)
+	fp.truncate(0)
+	fp.write(re.sub(',\s+\n', ',\n', newTranslator))
+	fp.close()

@@ -80,7 +80,7 @@ for translator_file in os.listdir(TRANSLATORS_DIRECTORY):
 			
 			# Parse JSON header
 			m = re.match(r'^\s*{[\S\s]*?}\s*?[\r\n]', translator)
-			info = json.loads(m.group(0))
+			info = json.loads(m.group(0), )
 			
 			if info['translatorID'] in translator_compat:
 				if 'browserSupport' in info:
