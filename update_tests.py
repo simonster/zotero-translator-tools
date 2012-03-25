@@ -28,7 +28,7 @@
 """Sets compatibility on Zotero translators by fetching the latest test results. Currently only
 adds compatibility."""
 
-import os, re, time, argparse, collections
+import os, re, time, argparse, collections, codecs
 from common import *
 
 TRANSLATORS_DIRECTORY = "/Users/simon/Desktop/Development/FS/zotero/translators"
@@ -52,7 +52,7 @@ gecko_testResults = fetch_json(date+"/"+gecko_testResults[0], True)
 
 for translator in args.translator:
 	# Load translator files
-	fp = open(translator, 'r+')
+	fp = codecs.open(translator, 'r+', 'utf-8')
 	translator = fp.read()
 	# Read info
 	m = re.match(r'^\s*{[\S\s]*?}\s*?[\r\n]', translator)
@@ -78,8 +78,8 @@ for translator in args.translator:
 				test['items'] = testResult['itemsReturned']
 	
 	# Save
-	newTranslator = translator.replace(m.group(0),
-		m.group(1)+json.dumps(tests, indent=64).replace(' ' * 64, '\t')+m.group(3))
+	newTranslator = translator.replace(m.group(0), m.group(1)+json.dumps(tests, indent=64, ensure_ascii=False)
+		.replace(' ' * 64, '\t')+m.group(3))
 	if newTranslator == translator:
 		raise Exception('Could not update tests')
 	
