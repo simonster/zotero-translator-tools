@@ -28,34 +28,20 @@
 """Sets compatibility on Zotero translators by fetching the latest test results. Currently only
 adds compatibility."""
 
-import calendar, gzip, io, json, os, re, sets, sys, time, urllib
+import os, re, sets, time, argparse
+from common import *
 
 TRANSLATORS_DIRECTORY = "/Users/simon/Desktop/Development/FS/zotero/translators"
-TEST_URL = "http://zotero-translator-tests.s3-website-us-east-1.amazonaws.com/"
 UPDATE_LASTUPDATED = False
 
-gt = time.gmtime()
-if len(sys.argv) > 1:
-	date = sys.argv[1]
-else:
-	date = time.strftime("%Y-%m-%d", gt)
-timestamp = time.strftime("%Y-%m-%d %H:%M:%S", gt)
-
-def fetch_json(file, gzipped=False):
-	"""Fetches a JSON file from the given test URL"""
-	fp = urllib.urlopen(TEST_URL+date+"/"+file)
-	response = fp.getcode()
-	if response != 200:
-		raise Exception('Server returned an error: '+str(response));
-	if gzipped:
-		data = json.load(gzip.GzipFile(fileobj=io.BytesIO(fp.read())))
-	else:
-		data = json.load(fp)
-	fp.close()
-	return data
+parser = argparse.ArgumentParser(description='Updates browserSupport on Zotero translators based '
+	+'on the latest test runs.')
+parser.add_argument('-d', '--date', help='use test runs from DATE')
+args = parser.parse_args()
+date = args.date or time.strftime("%Y-%m-%d", time.gmtime())
 
 # Load index
-index = fetch_json("index.json")
+index = fetch_json(date+"/index.json")
 
 # Loop through test results to figure out compat
 translator_compat = {}
@@ -68,7 +54,7 @@ for result_file in index:
 		# No need to load Gecko results
 		continue
 	
-	results = fetch_json(result_file, True)
+	results = fetch_json(date+"/"+result_file, True)
 	for translator_results in results['results']:
 		# Make sure translation succeeded
 		succeeded = translator_results['succeeded'] and (not translator_results['pending']) \
@@ -84,6 +70,7 @@ for result_file in index:
 			translator_compat[translatorID] = sets.Set(browser)
 
 # Loop through translators
+timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 for translator_file in os.listdir(TRANSLATORS_DIRECTORY):
 	if translator_file.endswith('.js'):
 		# Read existing translator
@@ -122,8 +109,7 @@ for translator_file in os.listdir(TRANSLATORS_DIRECTORY):
 							translator)
 					
 					if newTranslator == translator:
-						print "ERROR: Could not update browserSupport"
-						continue;
+						raise Exception('Could not update browserSupport')
 						
 					# Update lastUpdated
 					if UPDATE_LASTUPDATED or "s" in diff or "c" in diff:
