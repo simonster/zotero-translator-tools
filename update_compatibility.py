@@ -93,7 +93,7 @@ for translator_file in os.listdir(TRANSLATORS_DIRECTORY):
 				if diff:
 					# Build new browserSupport string
 					newBrowserSupport = ''
-					for browser in 'gcsib':
+					for browser in 'gcsibv':
 						if browser in compat or browser in browserSupport:
 							newBrowserSupport += browser
 					
@@ -109,7 +109,7 @@ for translator_file in os.listdir(TRANSLATORS_DIRECTORY):
 							translator)
 					
 					if newTranslator == translator:
-						raise Exception('Could not update browserSupport')
+						raise Exception('Could not update browserSupport for '+translator_file)
 						
 					# Update lastUpdated
 					if UPDATE_LASTUPDATED or "s" in diff or "c" in diff:
