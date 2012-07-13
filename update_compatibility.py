@@ -32,7 +32,7 @@ import os, re, sets, time, argparse
 from common import *
 
 TRANSLATORS_DIRECTORY = "/Users/simon/Desktop/Development/FS/zotero/translators"
-UPDATE_LASTUPDATED = False
+UPDATE_LASTUPDATED = True
 
 parser = argparse.ArgumentParser(description='Updates browserSupport on Zotero translators based '
 	+'on the latest test runs.')
